@@ -1,0 +1,10 @@
+{
+  "request": {
+    "model": "test-model",
+    "messages": [
+      { "role": "user", "content": "Say hello" }
+    ]
+  },
+  "expectedTrace": ["collect", "measure", "budget", "summarize", "prune", "dedupe", "compress", "retrieve", "forward"],
+  "description": "Single user message, minimal content"
+}

@@ -1,0 +1,136 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "entry": [
+    "src/index.{ts,tsx,js,jsx}",
+    "src/main.{ts,tsx,js,jsx}",
+    "src/providers/index.{ts,tsx,js,jsx}"
+  ],
+  "duplicates": {
+    // Hide pair-only clones; focus on widespread copy-paste
+    // worth refactoring. Lower to 2 to report every duplicate pair.
+    "minOccurrences": 3,
+    "ignore": [
+      "src/annotations/store.ts"
+    ]
+  },
+  "rules": {
+    "unused-dependencies": "warn"
+  },
+  "ignorePatterns": [
+    "sample-plugins/**"
+  ],
+  "ignoreExports": [
+    {
+      "file": "src/diff/types.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/snapshots/types.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/diff/index.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/snapshots/index.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/timeline/types.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/timeline/navigator.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/timeline/index.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/replay/types.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/replay/index.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/replay/store.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/annotations/index.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/annotations/types.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/search/index.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/search/types.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/regression/index.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/benchmark/index.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/workspaces/index.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/workspaces/store.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/plugins/sdk/types.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/plugins/runtime/index.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/plugins/index.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/compression/index.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/providers/interface.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/providers/types.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/providers/index.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/providers/adapters/index.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/providers/config/loader.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/providers/registry.ts",
+      "exports": ["*"]
+    }
+  ]
+}

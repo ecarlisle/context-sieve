@@ -1,0 +1,42 @@
+{
+  "name": "context-sieve",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "typecheck:watch": "tsc --noEmit --watch",
+    "test": "vitest",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:golden": "vitest run tests/golden",
+    "fallow": "npx fallow",
+    "fallow:dead-code": "npx fallow dead-code --unused-files --unused-deps",
+    "fallow:audit": "npx fallow audit --changed-since main",
+    "fallow:fix-dry": "npx fallow fix --dry-run"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.0",
+    "better-sqlite3": "^11.7.0",
+    "hono": "^4.6.0",
+    "micromatch": "^4.0.8",
+    "yaml": "^2.9.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/micromatch": "^4.0.10",
+    "@types/node": "^22.20.0",
+    "@vitest/coverage-istanbul": "^4.1.9",
+    "@vitest/coverage-v8": "^4.1.9",
+    "fallow": "^2.102.0",
+    "tsx": "^4.22.4",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.9"
+  }
+}

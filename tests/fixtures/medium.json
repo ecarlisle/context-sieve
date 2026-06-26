@@ -1,0 +1,15 @@
+{
+  "request": {
+    "model": "test-model",
+    "messages": [
+      { "role": "system", "content": "You are a helpful assistant that answers questions concisely." },
+      { "role": "user", "content": "What is the capital of France? Please provide a brief answer." },
+      { "role": "assistant", "content": "The capital of France is Paris." },
+      { "role": "user", "content": "What about Germany? And can you also tell me about Italy?" },
+      { "role": "assistant", "content": "The capital of Germany is Berlin. The capital of Italy is Rome." },
+      { "role": "user", "content": "Great, now tell me about Spain, Portugal, and the Netherlands in one response." }
+    ]
+  },
+  "expectedTrace": ["collect", "measure", "budget", "summarize", "prune", "dedupe", "compress", "retrieve", "forward"],
+  "description": "Multi-turn conversation with system prompt"
+}

@@ -1,0 +1,1466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>context-sieve — Platform</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', monospace; background: #0d1117; color: #c9d1d9; min-height: 100vh; }
+  .header { background: #161b22; border-bottom: 1px solid #30363d; padding: 8px 24px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .header h1 { font-size: 16px; font-weight: 600; color: #f0f6fc; white-space: nowrap; }
+  .header select { background: #0d1117; color: #c9d1d9; border: 1px solid #30363d; padding: 6px 12px; border-radius: 6px; font-size: 13px; min-width: 260px; }
+  .mode-toggle { display: flex; gap: 0; margin-left: auto; }
+  .mode-toggle button { background: #161b22; color: #8b949e; border: 1px solid #30363d; padding: 6px 14px; font-size: 12px; cursor: pointer; }
+  .mode-toggle button:first-child { border-radius: 6px 0 0 6px; }
+  .mode-toggle button:last-child { border-radius: 0 6px 6px 0; }
+  .mode-toggle button.active { background: #1f6feb; border-color: #1f6feb; color: #fff; }
+  .tabs { display: flex; gap: 0; background: #161b22; border-bottom: 1px solid #30363d; padding: 0 24px; }
+  .tabs button { background: transparent; color: #8b949e; border: none; border-bottom: 2px solid transparent; padding: 10px 16px; font-size: 12px; cursor: pointer; font-family: inherit; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.15s; }
+  .tabs button:hover { color: #c9d1d9; }
+  .tabs button.active { color: #f0f6fc; border-bottom-color: #1f6feb; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .layout { display: flex; height: calc(100vh - 92px); }
+  .sidebar { width: 300px; border-right: 1px solid #30363d; padding: 16px; overflow-y: auto; flex-shrink: 0; }
+  .sidebar h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #8b949e; margin-bottom: 12px; }
+  .main { flex: 1; padding: 16px 24px; overflow-y: auto; }
+
+  .timeline-bar { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 16px; }
+  .timeline-step { padding: 6px 12px; border-radius: 6px; font-size: 11px; cursor: pointer; border: 1px solid #30363d; background: #161b22; color: #8b949e; transition: all 0.15s; }
+  .timeline-step:hover { border-color: #58a6ff; color: #58a6ff; }
+  .timeline-step.active { background: #1f6feb; border-color: #1f6feb; color: #fff; }
+  .timeline-step.status-ok { border-left: 3px solid #3fb950; }
+  .timeline-step.status-noop { border-left: 3px solid #d29922; }
+  .timeline-step.status-error { border-left: 3px solid #f85149; }
+  .timeline-step.divergent { border-right: 3px solid #f0883e; }
+
+  .comparison-bar { display: flex; flex-direction: column; gap: 8px; }
+  .comparison-row { display: flex; gap: 4px; align-items: center; }
+  .comparison-row .run-label { font-size: 10px; color: #8b949e; min-width: 48px; text-align: right; }
+
+  .inspector-section { margin-bottom: 16px; }
+  .inspector-section h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #8b949e; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #21262d; }
+  .inspector-section pre { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 12px; font-size: 12px; overflow-x: auto; white-space: pre-wrap; max-height: 200px; overflow-y: auto; }
+  .inspector-section .empty { color: #484f58; font-style: italic; font-size: 12px; }
+  .inspector-header { margin-bottom: 16px; }
+  .inspector-header .stage-badge { display: inline-block; background: #1f6feb; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 14px; font-weight: 600; }
+  .inspector-header .frame-num { color: #8b949e; font-size: 12px; margin-left: 8px; }
+
+  .diff-side { display: flex; gap: 16px; }
+  .diff-side > div { flex: 1; min-width: 0; }
+  .diff-side h4 { font-size: 10px; text-transform: uppercase; color: #8b949e; margin-bottom: 4px; }
+
+  .divergence-badge { display: inline-flex; align-items: center; gap: 4px; background: #3d2e00; color: #f0883e; border: 1px solid #f0883e; border-radius: 12px; padding: 2px 10px; font-size: 11px; margin-bottom: 4px; }
+
+  .placeholder { display: flex; align-items: center; justify-content: center; height: 100%; color: #484f58; font-size: 14px; }
+  .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .summary-card { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 12px; }
+  .summary-card .label { font-size: 10px; text-transform: uppercase; color: #8b949e; }
+  .summary-card .value { font-size: 18px; font-weight: 600; color: #f0f6fc; margin-top: 4px; }
+  .divergence-list { margin-bottom: 16px; }
+  .divergence-list .div-item { padding: 6px 10px; margin-bottom: 4px; background: #161b22; border: 1px solid #30363d; border-radius: 4px; font-size: 12px; cursor: pointer; }
+  .divergence-list .div-item:hover { border-color: #f0883e; }
+  .divergence-list .div-item .reason { color: #f0883e; font-weight: 600; }
+  .divergence-list .div-item .detail { color: #8b949e; margin-left: 8px; }
+  .diff-highlight { background: #1c2333; border: 1px solid #58a6ff; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+
+  .playback-controls { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .playback-controls .pb-btn { background: #0d1117; color: #c9d1d9; border: 1px solid #30363d; border-radius: 4px; padding: 4px 10px; font-size: 12px; cursor: pointer; font-family: inherit; }
+  .playback-controls .pb-btn:hover { border-color: #58a6ff; color: #58a6ff; }
+  .playback-controls .pb-btn.active-btn { background: #1f6feb; border-color: #1f6feb; color: #fff; }
+  .playback-controls .pb-label { font-size: 11px; color: #8b949e; margin-left: auto; }
+  .playback-controls .pb-speed { font-size: 11px; color: #8b949e; }
+  .playback-controls select { background: #0d1117; color: #c9d1d9; border: 1px solid #30363d; border-radius: 4px; padding: 2px 6px; font-size: 11px; }
+  .timeline-step.playing { animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(88, 166, 255, 0.4); } 50% { box-shadow: 0 0 0 4px rgba(88, 166, 255, 0.1); } }
+  .playing-indicator { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #3fb950; margin-right: 6px; animation: blink 1s step-end infinite; vertical-align: middle; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .export-btn { background: #238636; color: #fff; border: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; font-family: inherit; font-weight: 500; white-space: nowrap; }
+  .export-btn:hover { background: #2ea043; }
+  .export-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .replay-badge { display: none; align-items: center; gap: 6px; background: #1c2333; border: 1px solid #58a6ff; border-radius: 6px; padding: 4px 12px; font-size: 12px; color: #58a6ff; white-space: nowrap; }
+  .replay-badge .close-replay { cursor: pointer; color: #8b949e; margin-left: 4px; font-size: 14px; }
+  .replay-badge .close-replay:hover { color: #f85149; }
+
+  .causal-panel { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 12px; margin-bottom: 12px; }
+  .causal-panel h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #8b949e; margin-bottom: 8px; }
+  .causal-panel .causal-summary { font-size: 13px; color: #f0f6fc; margin-bottom: 8px; }
+  .causal-panel .causal-item { padding: 4px 0; font-size: 12px; border-bottom: 1px solid #21262d; }
+  .causal-panel .causal-item:last-child { border-bottom: none; }
+  .causal-panel .causal-item .stage-tag { display: inline-block; background: #1f6feb22; color: #58a6ff; border-radius: 4px; padding: 1px 6px; font-size: 10px; margin-right: 6px; }
+  .causal-panel .causal-item .impact-high { color: #f85149; }
+  .causal-panel .causal-item .impact-medium { color: #d29922; }
+  .causal-panel .causal-item .impact-low { color: #3fb950; }
+  .causal-panel .causal-metrics { display: flex; gap: 12px; margin-top: 8px; font-size: 11px; color: #8b949e; }
+  .causal-panel .causal-metrics span strong { color: #c9d1d9; }
+
+  .tl-annotation-marker { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin: 0 1px; vertical-align: middle; }
+  .tl-annotation-marker.marker-note { background: #8b949e; }
+  .tl-annotation-marker.marker-issue { background: #f85149; }
+  .tl-annotation-marker.marker-question { background: #d29922; }
+  .tl-annotation-marker.marker-insight { background: #58a6ff; }
+  .tl-annotation-marker.marker-decision { background: #3fb950; }
+
+  .ann-panel { margin-top: 16px; border-top: 1px solid #30363d; padding-top: 12px; }
+  .ann-panel h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #8b949e; margin-bottom: 8px; }
+  .ann-item { padding: 6px 8px; margin-bottom: 4px; background: #161b22; border: 1px solid #30363d; border-radius: 4px; font-size: 12px; }
+  .ann-item .ann-meta { font-size: 10px; color: #8b949e; display: flex; gap: 6px; align-items: center; margin-bottom: 2px; }
+  .ann-item .ann-badge { display: inline-block; padding: 0 5px; border-radius: 3px; font-size: 9px; font-weight: 600; text-transform: uppercase; }
+  .ann-item .ann-badge.type-note { background: #8b949e33; color: #8b949e; }
+  .ann-item .ann-badge.type-issue { background: #f8514933; color: #f85149; }
+  .ann-item .ann-badge.type-question { background: #d2992233; color: #d29922; }
+  .ann-item .ann-badge.type-insight { background: #58a6ff33; color: #58a6ff; }
+  .ann-item .ann-badge.type-decision { background: #3fb95033; color: #3fb950; }
+  .ann-item .ann-text { color: #c9d1d9; }
+  .ann-empty { color: #484f58; font-style: italic; font-size: 12px; padding: 8px 0; }
+
+  .ann-form { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+  .ann-form-row { display: flex; gap: 6px; }
+  .ann-form select { background: #0d1117; color: #c9d1d9; border: 1px solid #30363d; border-radius: 4px; padding: 4px 8px; font-size: 12px; }
+  .ann-form input { flex: 1; background: #0d1117; color: #c9d1d9; border: 1px solid #30363d; border-radius: 4px; padding: 4px 8px; font-size: 12px; font-family: inherit; }
+  .ann-form input::placeholder { color: #484f58; }
+  .ann-form button { background: #1f6feb; color: #fff; border: none; border-radius: 4px; padding: 4px 12px; font-size: 12px; cursor: pointer; font-family: inherit; white-space: nowrap; }
+  .ann-form button:hover { background: #388bfd; }
+
+  .search-section { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #30363d; }
+  .search-section h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #8b949e; margin-bottom: 8px; }
+  .search-row { display: flex; gap: 4px; margin-bottom: 8px; }
+  .search-input { flex: 1; background: #0d1117; color: #c9d1d9; border: 1px solid #30363d; border-radius: 4px; padding: 6px 8px; font-size: 12px; font-family: inherit; }
+  .search-input::placeholder { color: #484f58; }
+  .search-btn { background: #1f6feb; color: #fff; border: none; border-radius: 4px; padding: 6px 12px; font-size: 12px; cursor: pointer; font-family: inherit; white-space: nowrap; }
+  .search-btn:hover { background: #388bfd; }
+  .search-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+  .chip { background: #161b22; color: #8b949e; border: 1px solid #30363d; border-radius: 12px; padding: 2px 10px; font-size: 10px; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+  .chip:hover { border-color: #58a6ff; color: #58a6ff; }
+  .chip.active { background: #1f6feb33; border-color: #1f6feb; color: #58a6ff; }
+  .search-input-sm { background: #0d1117; color: #c9d1d9; border: 1px solid #30363d; border-radius: 4px; padding: 2px 6px; font-size: 10px; font-family: inherit; width: 80px; }
+  .search-filters { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; align-items: center; }
+  .search-filters label { font-size: 10px; color: #8b949e; }
+  .search-results { max-height: 400px; overflow-y: auto; }
+  .search-result-item { padding: 8px; margin-bottom: 4px; background: #161b22; border: 1px solid #30363d; border-radius: 4px; font-size: 11px; cursor: pointer; transition: border-color 0.15s; }
+  .search-result-item:hover { border-color: #58a6ff; }
+  .search-result-item .sr-runid { color: #58a6ff; font-weight: 600; font-size: 11px; margin-bottom: 4px; word-break: break-all; }
+  .search-result-item .sr-reason { color: #8b949e; font-size: 10px; padding: 1px 0; }
+  .search-result-item .sr-reason::before { content: "› "; color: #484f58; }
+  .search-result-item .sr-open { color: #3fb950; font-size: 10px; margin-top: 4px; display: inline-block; }
+  .search-empty { color: #484f58; font-style: italic; font-size: 11px; padding: 8px 0; }
+  .search-loading { color: #8b949e; font-size: 11px; padding: 8px 0; }
+
+  .section-full { padding: 16px 24px; overflow-y: auto; height: calc(100vh - 92px); }
+  .section-full h2 { font-size: 14px; color: #f0f6fc; margin-bottom: 16px; }
+  .section-full h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #8b949e; margin-bottom: 8px; margin-top: 16px; }
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .card { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 14px; }
+  .card .label { font-size: 10px; text-transform: uppercase; color: #8b949e; margin-bottom: 4px; }
+  .card .value { font-size: 22px; font-weight: 600; color: #f0f6fc; }
+  .card .sub { font-size: 11px; color: #8b949e; margin-top: 4px; }
+  .severity-none { color: #3fb950; }
+  .severity-low { color: #d29922; }
+  .severity-medium { color: #f0883e; }
+  .severity-high { color: #f85149; }
+  .signal-item { background: #161b22; border: 1px solid #30363d; border-radius: 4px; padding: 8px 12px; margin-bottom: 4px; font-size: 12px; display: flex; justify-content: space-between; align-items: center; }
+  .signal-item .sig-cat { text-transform: uppercase; font-size: 10px; font-weight: 600; }
+  .signal-item .sig-evidence { color: #8b949e; flex: 1; margin: 0 12px; }
+  .signal-item .sig-severity { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 8px; }
+  .sig-severity.high { background: #f8514933; color: #f85149; }
+  .sig-severity.medium { background: #f0883e33; color: #f0883e; }
+  .sig-severity.low { background: #d2992233; color: #d29922; }
+  .benchmark-score { font-size: 48px; font-weight: 700; text-align: center; padding: 20px; }
+  .benchmark-score.good { color: #3fb950; }
+  .benchmark-score.review { color: #d29922; }
+  .benchmark-score.bad { color: #f85149; }
+  .rec-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; }
+  .rec-badge.keep { background: #3fb95033; color: #3fb950; border: 1px solid #3fb950; }
+  .rec-badge.review { background: #d2992233; color: #d29922; border: 1px solid #d29922; }
+  .rec-badge.reject { background: #f8514933; color: #f85149; border: 1px solid #f85149; }
+  .bench-input { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+  .bench-input select { background: #0d1117; color: #c9d1d9; border: 1px solid #30363d; border-radius: 4px; padding: 6px 10px; font-size: 12px; min-width: 200px; }
+  .bench-input button { background: #1f6feb; color: #fff; border: none; border-radius: 4px; padding: 6px 14px; font-size: 12px; cursor: pointer; font-family: inherit; }
+  .bench-input button:hover { background: #388bfd; }
+  .metric-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 12px; }
+  .metric-table th { text-align: left; color: #8b949e; font-weight: 500; text-transform: uppercase; font-size: 10px; padding: 6px 8px; border-bottom: 1px solid #30363d; }
+  .metric-table td { padding: 6px 8px; border-bottom: 1px solid #21262d; color: #c9d1d9; }
+  .metric-table .good { color: #3fb950; }
+  .metric-table .warn { color: #d29922; }
+  .metric-table .bad { color: #f85149; }
+  .ws-item { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 12px; margin-bottom: 8px; cursor: pointer; }
+  .ws-item:hover { border-color: #58a6ff; }
+  .ws-item .ws-name { font-size: 14px; color: #f0f6fc; font-weight: 600; }
+  .ws-item .ws-meta { font-size: 11px; color: #8b949e; margin-top: 4px; }
+  .ws-create { display: flex; gap: 8px; margin-bottom: 16px; }
+  .ws-create input { flex: 1; background: #0d1117; color: #c9d1d9; border: 1px solid #30363d; border-radius: 4px; padding: 8px; font-size: 13px; font-family: inherit; }
+  .ws-create input::placeholder { color: #484f58; }
+  .ws-create button { background: #238636; color: #fff; border: none; border-radius: 4px; padding: 8px 16px; font-size: 13px; cursor: pointer; font-family: inherit; }
+  .ws-create button:hover { background: #2ea043; }
+  .bench-history { margin-top: 16px; }
+  .bench-history-item { background: #161b22; border: 1px solid #30363d; border-radius: 4px; padding: 8px 12px; margin-bottom: 4px; font-size: 12px; display: flex; justify-content: space-between; }
+  .plugins-list { display: grid; gap: 12px; }
+  .plugin-card { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 14px; }
+  .plugin-card .plugin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .plugin-card .plugin-id { font-size: 14px; color: #f0f6fc; font-weight: 600; }
+  .plugin-card .plugin-version { font-size: 11px; color: #8b949e; margin-left: 8px; }
+  .plugin-card .plugin-status { display: inline-block; padding: 2px 8px; border-radius: 8px; font-size: 10px; font-weight: 600; text-transform: uppercase; }
+  .plugin-status.enabled { background: #3fb95033; color: #3fb950; border: 1px solid #3fb950; }
+  .plugin-status.disabled { background: #8b949e33; color: #8b949e; border: 1px solid #30363d; }
+  .plugin-status.unloaded { background: #d2992233; color: #d29922; border: 1px solid #d29922; }
+  .plugin-card .plugin-extensions { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 6px; }
+  .plugin-ext-tag { display: inline-block; background: #1f6feb22; color: #58a6ff; border-radius: 4px; padding: 1px 6px; font-size: 10px; }
+  .plugin-card .plugin-actions { display: flex; gap: 6px; }
+  .plugin-card .plugin-actions button { background: #0d1117; color: #c9d1d9; border: 1px solid #30363d; border-radius: 4px; padding: 4px 10px; font-size: 11px; cursor: pointer; font-family: inherit; }
+  .plugin-card .plugin-actions button:hover { border-color: #58a6ff; color: #58a6ff; }
+  .plugin-card .plugin-actions button.toggle-on { background: #238636; border-color: #3fb950; color: #fff; }
+  .plugin-card .plugin-actions button.toggle-off { background: #f8514933; border-color: #f85149; color: #f85149; }
+  .plugin-empty { color: #484f58; font-style: italic; font-size: 13px; padding: 20px 0; }
+  .plugin-load-section { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #30363d; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>context-sieve</h1>
+  <div id="explorer-controls" style="display:flex;align-items:center;gap:12px;flex:1">
+    <select id="run-selector-a"><option value="">— Select Run A —</option></select>
+    <select id="run-selector-b" style="display:none"><option value="">— Select Run B —</option></select>
+    <div class="mode-toggle">
+      <button id="mode-single" class="active" onclick="setMode('single')">Single</button>
+      <button id="mode-compare" onclick="setMode('compare')">Compare</button>
+    </div>
+    <button class="export-btn" id="export-btn" onclick="exportReplay()" title="Export this run as a replay artifact">Export Replay</button>
+    <div class="replay-badge" id="replay-badge">
+      <span>▶ Replay Mode</span>
+      <span class="close-replay" onclick="exitReplayMode()">✕</span>
+    </div>
+  </div>
+</div>
+<div class="tabs">
+  <button class="active" onclick="switchTab('explorer',this)">Explorer</button>
+  <button onclick="switchTab('search',this)">Search</button>
+  <button onclick="switchTab('regression',this)">Regression</button>
+  <button onclick="switchTab('lab',this)">Optimization Lab</button>
+  <button onclick="switchTab('workspaces',this)">Workspaces</button>
+  <button onclick="switchTab('plugins',this)">Plugins</button>
+  <button onclick="switchTab('multirun',this)">Multi-Run</button>
+  <button onclick="switchTab('testing',this)">Testing</button>
+</div>
+<div class="tab-content active" id="tab-explorer">
+<div class="layout">
+  <div class="sidebar" id="sidebar">
+    <h2>Timeline</h2>
+    <div id="summary-panel"></div>
+    <div id="playback-controls" class="playback-controls" style="display:none">
+      <button class="pb-btn" id="pb-play" onclick="togglePlay()" title="Play/Pause">▶</button>
+      <button class="pb-btn" onclick="stepBackward()" title="Step Back">⏮</button>
+      <button class="pb-btn" onclick="stepForward()" title="Step Forward">⏭</button>
+      <select id="pb-speed" onchange="setSpeed(parseFloat(this.value))">
+        <option value="0.5">0.5×</option>
+        <option value="1" selected>1×</option>
+        <option value="2">2×</option>
+        <option value="4">4×</option>
+      </select>
+      <label style="font-size:11px;color:#8b949e;display:flex;align-items:center;gap:4px;cursor:pointer">
+        <input type="checkbox" id="pb-loop" onchange="setLoop(this.checked)"> Loop
+      </label>
+      <span class="pb-label"><span id="pb-status"></span></span>
+    </div>
+    <div id="divergence-panel"></div>
+    <div id="timeline-bar" class="timeline-bar"></div>
+    <div class="ann-form" id="ann-form" style="display:none">
+      <div class="ann-form-row">
+        <select id="ann-type">
+          <option value="note">note</option>
+          <option value="question">question</option>
+          <option value="issue">issue</option>
+          <option value="insight">insight</option>
+          <option value="decision">decision</option>
+        </select>
+        <input id="ann-input" type="text" placeholder="Add annotation…" onkeydown="if(event.key==='Enter')submitAnnotation()">
+        <button onclick="submitAnnotation()">Add</button>
+      </div>
+    </div>
+  </div>
+  <div class="main" id="main-area">
+    <div id="inspector">
+      <div class="placeholder">Select a run to begin</div>
+    </div>
+    <div id="annotation-panel" class="ann-panel" style="display:none"></div>
+  </div>
+</div>
+</div>
+
+<div class="tab-content" id="tab-search">
+<div class="section-full">
+  <h2>Search Console</h2>
+  <div class="search-section" style="border:none;padding:0">
+    <div class="search-row">
+      <input id="search-input" type="text" class="search-input" placeholder="Search execution history..." onkeydown="if(event.key==='Enter')runSearch()">
+      <button class="search-btn" onclick="runSearch()">Search</button>
+    </div>
+    <div class="search-chips" id="search-chips">
+      <span class="chip" data-filter="annotationType:issue" onclick="toggleSearchChip(this)">issue</span>
+      <span class="chip" data-filter="annotationType:question" onclick="toggleSearchChip(this)">question</span>
+      <span class="chip" data-filter="annotationType:decision" onclick="toggleSearchChip(this)">decision</span>
+      <span class="chip" data-filter="annotationType:insight" onclick="toggleSearchChip(this)">insight</span>
+      <span class="chip" data-filter="annotationType:note" onclick="toggleSearchChip(this)">note</span>
+      <span class="chip" data-filter="hasSummary" onclick="toggleSearchChip(this)">summary</span>
+      <span class="chip" data-filter="hasDiff" onclick="toggleSearchChip(this)">diff</span>
+      <span class="chip" data-filter="hasCausal" onclick="toggleSearchChip(this)">causal</span>
+    </div>
+    <div class="search-filters">
+      <label>stage</label>
+      <input id="search-stage" type="text" class="search-input-sm" placeholder="e.g. prune" oninput="runSearch()">
+      <label>author</label>
+      <input id="search-author" type="text" class="search-input-sm" placeholder="user" oninput="runSearch()">
+    </div>
+    <div id="search-results" class="search-results"></div>
+  </div>
+</div>
+</div>
+
+<div class="tab-content" id="tab-regression">
+<div class="section-full">
+  <h2>Regression Center</h2>
+  <div class="bench-input">
+    <select id="reg-baseline"><option value="">— Select baseline run —</option></select>
+    <select id="reg-candidate"><option value="">— Select candidate run —</option></select>
+    <button onclick="runRegression()">Detect Regression</button>
+  </div>
+  <div id="reg-results"></div>
+</div>
+</div>
+
+<div class="tab-content" id="tab-lab">
+<div class="section-full">
+  <h2>Optimization Lab</h2>
+  <div class="bench-input">
+    <select id="bench-original"><option value="">— Original run —</option></select>
+    <select id="bench-optimized"><option value="">— Optimized run —</option></select>
+    <button onclick="runBenchmark()">Benchmark</button>
+    <button onclick="runBenchmarkVsAvg()">vs Average</button>
+  </div>
+  <div id="bench-results"></div>
+</div>
+</div>
+
+<div class="tab-content" id="tab-workspaces">
+<div class="section-full">
+  <h2>Workspaces</h2>
+  <div class="ws-create">
+    <input id="ws-name-input" type="text" placeholder="Workspace name…" onkeydown="if(event.key==='Enter')createWorkspace()">
+    <button onclick="createWorkspace()">Create Workspace</button>
+  </div>
+  <div id="ws-list"></div>
+</div>
+</div>
+
+<div class="tab-content" id="tab-plugins">
+<div class="section-full">
+  <h2>Plugin Manager</h2>
+  <div id="plugin-list"></div>
+</div>
+</div>
+
+<div class="tab-content" id="tab-multirun">
+<div class="section-full">
+  <h2>Multi-Provider Run Comparison</h2>
+  <div class="bench-input">
+    <input id="mrun-model" type="text" class="search-input" style="flex:1" placeholder="Model name (e.g. gpt-4o-mini)" value="gpt-4o-mini">
+    <input id="mrun-message" type="text" class="search-input" style="flex:2" placeholder="Message to send to all providers" onkeydown="if(event.key==='Enter')runMultiRun()">
+    <button onclick="runMultiRun()">Run Across All Providers</button>
+  </div>
+  <div id="mrun-results"></div>
+  <div id="mrun-comparison"></div>
+  <h3>Past Multi-Runs</h3>
+  <div id="mrun-history"></div>
+</div>
+</div>
+
+<div class="tab-content" id="tab-testing">
+<div class="section-full">
+  <h2>Test Suite Runner</h2>
+  <div class="bench-input">
+    <button onclick="runTestSuite('all')" style="background:#238636">Run All Tests</button>
+    <button onclick="runTestSuite('unit')">Run Unit Tests</button>
+    <button onclick="runTestSuite('golden')">Run Golden Tests</button>
+    <button onclick="runTestSuite('integration')">Run Integration Tests</button>
+  </div>
+  <div id="test-results" style="margin-top:12px;white-space:pre-wrap;font-family:monospace;font-size:13px;line-height:1.5;max-height:600px;overflow-y:auto;background:#0d1117;padding:12px;border-radius:6px;border:1px solid #30363d"></div>
+  <div id="test-coverage" style="margin-top:8px;white-space:pre-wrap;font-family:monospace;font-size:13px;line-height:1.5;max-height:400px;overflow-y:auto;background:#0d1117;padding:12px;border-radius:6px;border:1px solid #30363d"></div>
+</div>
+</div>
+
+<script>
+let mode = 'single'
+let currentFramesA = []
+let currentFramesB = []
+let selectedAIndex = 0
+let selectedBIndex = 0
+let currentDiff = null
+let runsCache = []
+let isReplayMode = false
+let currentReplay = null
+
+// Playback state
+let pb = { isPlaying: false, index: 0, speed: 1, runId: '', loop: false, timer: null }
+
+const runSelectorA = document.getElementById('run-selector-a')
+const runSelectorB = document.getElementById('run-selector-b')
+const timelineBar = document.getElementById('timeline-bar')
+const inspector = document.getElementById('inspector')
+const summaryPanel = document.getElementById('summary-panel')
+const divergencePanel = document.getElementById('divergence-panel')
+const pbControls = document.getElementById('playback-controls')
+const pbPlay = document.getElementById('pb-play')
+const pbStatus = document.getElementById('pb-status')
+const pbSpeed = document.getElementById('pb-speed')
+const pbLoop = document.getElementById('pb-loop')
+const exportBtn = document.getElementById('export-btn')
+const replayBadge = document.getElementById('replay-badge')
+const annPanel = document.getElementById('annotation-panel')
+const annForm = document.getElementById('ann-form')
+const annType = document.getElementById('ann-type')
+const annInput = document.getElementById('ann-input')
+let currentRunId = ''
+
+function clearPlayback() {
+  if (pb.timer) { clearInterval(pb.timer); pb.timer = null }
+  pb.isPlaying = false
+  pb.index = 0
+  if (pbPlay) pbPlay.textContent = '▶'
+  if (pbStatus) pbStatus.textContent = ''
+  if (pbControls) pbControls.style.display = 'none'
+}
+
+function togglePlay() {
+  if (currentFramesA.length === 0) return
+  if (pb.isPlaying) {
+    pausePlayback()
+  } else {
+    startPlayback()
+  }
+}
+
+function startPlayback() {
+  if (currentFramesA.length === 0) return
+  pb.isPlaying = true
+  pbPlay.textContent = '⏸'
+  pbPlay.classList.add('active-btn')
+  tickPlayback()
+  if (pb.timer) clearInterval(pb.timer)
+  const interval = Math.max(400, Math.round(2000 / pb.speed))
+  pb.timer = setInterval(() => {
+    const next = selectedAIndex + 1
+    if (next >= currentFramesA.length) {
+      if (pb.loop) {
+        selectFrame(0)
+        tickPlayback()
+      } else {
+        pausePlayback()
+      }
+      return
+    }
+    selectFrame(next)
+    tickPlayback()
+  }, interval)
+  if (pbStatus) pbStatus.innerHTML = '<span class="playing-indicator"></span> playing'
+}
+
+function pausePlayback() {
+  pb.isPlaying = false
+  if (pb.timer) { clearInterval(pb.timer); pb.timer = null }
+  pbPlay.textContent = '▶'
+  pbPlay.classList.remove('active-btn')
+  if (pbStatus) pbStatus.textContent = 'paused'
+}
+
+function stepForward() {
+  if (currentFramesA.length === 0) return
+  if (pb.isPlaying) pausePlayback()
+  const next = Math.min(selectedAIndex + 1, currentFramesA.length - 1)
+  selectFrame(next)
+}
+
+function stepBackward() {
+  if (currentFramesA.length === 0) return
+  if (pb.isPlaying) pausePlayback()
+  const prev = Math.max(selectedAIndex - 1, 0)
+  selectFrame(prev)
+}
+
+function setSpeed(multiplier) {
+  pb.speed = multiplier
+  if (pb.isPlaying) {
+    if (pb.timer) clearInterval(pb.timer)
+    const interval = Math.max(400, Math.round(2000 / pb.speed))
+    pb.timer = setInterval(() => {
+      const next = selectedAIndex + 1
+      if (next >= currentFramesA.length) {
+        if (pb.loop) { selectFrame(0); tickPlayback() } else { pausePlayback() }
+        return
+      }
+      selectFrame(next)
+      tickPlayback()
+    }, interval)
+  }
+}
+
+function setLoop(checked) {
+  pb.loop = checked
+}
+
+function tickPlayback() {
+  const total = currentFramesA.length
+  if (pbStatus) {
+    const pct = total > 0 ? Math.round(((selectedAIndex + 1) / total) * 100) : 0
+    pbStatus.textContent = `${pct}% (${selectedAIndex + 1}/${total})`
+  }
+}
+
+function getCurrentRunId() {
+  return isReplayMode ? (currentReplay?.snapshot?.id || '') : runSelectorA.value
+}
+
+async function loadAnnotations(runId) {
+  if (!runId) return []
+  const res = await fetch(`/api/annotations?runId=${encodeURIComponent(runId)}`)
+  if (!res.ok) return []
+  return await res.json()
+}
+
+function renderAnnotationMarkers(frameIndex, annotations) {
+  const steps = document.querySelectorAll('.timeline-step')
+  const frameAnns = annotations.filter(a => a.frameIndex === frameIndex)
+  for (const step of steps) {
+    const oldMarker = step.querySelector('.tl-annotation-marker')
+    if (oldMarker) oldMarker.remove()
+  }
+  const step = steps[frameIndex]
+  if (!step || frameAnns.length === 0) return
+  for (const a of frameAnns) {
+    const dot = document.createElement('span')
+    dot.className = `tl-annotation-marker marker-${a.type}`
+    dot.title = `[${a.type.toUpperCase()}] ${a.content}`
+    step.appendChild(document.createTextNode(' '))
+    step.appendChild(dot)
+  }
+}
+
+function renderAnnotationPanel(annotations) {
+  if (!annPanel) return
+  const frameAnns = annotations.filter(a => a.frameIndex === selectedAIndex)
+  if (frameAnns.length === 0) {
+    annPanel.style.display = ''
+    annPanel.innerHTML = '<h3>Annotations</h3><div class="ann-empty">No annotations for this frame</div>'
+    return
+  }
+  let html = '<h3>Annotations</h3>'
+  for (const a of frameAnns) {
+    html += `<div class="ann-item">
+      <div class="ann-meta">
+        <span class="ann-badge type-${a.type}">${a.type}</span>
+        <span>${escapeHtml(a.author)}</span>
+        <span>${new Date(a.createdAt).toLocaleTimeString()}</span>
+      </div>
+      <div class="ann-text">${escapeHtml(a.content)}</div>
+    </div>`
+  }
+  annPanel.style.display = ''
+  annPanel.innerHTML = html
+}
+
+async function submitAnnotation() {
+  const runId = getCurrentRunId()
+  if (!runId) return
+  const type = annType.value
+  const content = annInput.value.trim()
+  if (!content) return
+  annInput.value = ''
+  const body = {
+    runId,
+    frameIndex: selectedAIndex,
+    type,
+    content,
+    author: 'user',
+  }
+  const res = await fetch('/api/annotations', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) return
+  const annotation = await res.json()
+  currentAnnotations = await loadAnnotations(runId)
+  renderAnnotationMarkers(selectedAIndex, currentAnnotations)
+  renderAnnotationPanel(currentAnnotations)
+}
+
+async function refreshAnnotations() {
+  const runId = getCurrentRunId()
+  if (!runId) {
+    if (annPanel) annPanel.style.display = 'none'
+    if (annForm) annForm.style.display = 'none'
+    return
+  }
+  currentAnnotations = await loadAnnotations(runId)
+  annForm.style.display = 'flex'
+  renderAnnotationMarkers(selectedAIndex, currentAnnotations)
+  renderAnnotationPanel(currentAnnotations)
+}
+
+let currentAnnotations = []
+
+async function exportReplay() {
+  const runId = isReplayMode ? currentReplay?.snapshot?.id : runSelectorA.value
+  if (!runId) return
+  exportBtn.disabled = true
+  exportBtn.textContent = 'Exporting…'
+  try {
+    const res = await fetch(`/api/replay/export/${runId}`, { method: 'POST' })
+    const data = await res.json()
+    if (data.error) { throw new Error(data.error) }
+    exportBtn.textContent = `✓ ${data.replayId.slice(0, 12)}…`
+    setTimeout(() => { exportBtn.textContent = 'Export Replay'; exportBtn.disabled = false }, 2000)
+  } catch (err) {
+    exportBtn.textContent = '✕ Failed'
+    exportBtn.disabled = false
+  }
+}
+
+async function loadReplay(replayId) {
+  const res = await fetch(`/api/replay/${replayId}`)
+  if (!res.ok) {
+    inspector.innerHTML = '<div class="placeholder">Replay not found</div>'
+    return
+  }
+  const replay = await res.json()
+  currentReplay = replay
+  isReplayMode = true
+  replayBadge.style.display = 'flex'
+  exportBtn.textContent = 'Export Replay'
+  exportBtn.style.display = ''
+  document.querySelector('.mode-toggle').style.display = 'none'
+  runSelectorA.style.display = 'none'
+  runSelectorB.style.display = 'none'
+
+  currentFramesA = replay.timeline.frames
+  currentFramesB = []
+  selectedAIndex = 0
+  currentDiff = replay.diff || null
+  clearPlayback()
+  pbControls.style.display = 'flex'
+
+  renderReplaySummary(replay)
+  if (replay.causal) renderCausalPanel(replay.causal)
+  divergencePanel.innerHTML = ''
+  if (replay.diff) renderDivergenceList(replay.diff.divergencePoints)
+  renderSingleTimelineBar()
+  renderSingleFrame(0)
+  refreshAnnotations()
+}
+
+function exitReplayMode() {
+  isReplayMode = false
+  currentReplay = null
+  currentDiff = null
+  replayBadge.style.display = 'none'
+  document.querySelector('.mode-toggle').style.display = 'flex'
+  exportBtn.style.display = ''
+  runSelectorA.style.display = ''
+  clearPlayback()
+  currentFramesA = []
+  summaryPanel.innerHTML = ''
+  divergencePanel.innerHTML = ''
+  timelineBar.innerHTML = ''
+  inspector.innerHTML = '<div class="placeholder">Select a run to begin</div>'
+  if (annForm) annForm.style.display = 'none'
+  if (annPanel) annPanel.style.display = 'none'
+  currentAnnotations = []
+  setMode('single')
+}
+
+function renderReplaySummary(replay) {
+  const s = replay.snapshot
+  summaryPanel.innerHTML = `
+    <div class="summary-grid">
+      <div class="summary-card"><div class="label">Model</div><div class="value">${s.request?.model || '?'}</div></div>
+      <div class="summary-card"><div class="label">Stages</div><div class="value">${(s.pipelineTrace || []).length}</div></div>
+      <div class="summary-card"><div class="label">Input Tokens</div><div class="value">${s.metrics?.inputTokens || 0}</div></div>
+      <div class="summary-card"><div class="label">Output Tokens</div><div class="value">${s.metrics?.outputTokens || 0}</div></div>
+    </div>
+  `
+}
+
+function renderCausalPanel(causal) {
+  if (!causal) return
+  let items = ''
+  for (const d of causal.divergenceReasons) {
+    items += `<div class="causal-item">
+      <span class="stage-tag">${d.stage}</span>
+      <span class="impact-${d.impact}">◆</span>
+      ${escapeHtml(d.reason)}
+      <div style="color:#8b949e;font-size:11px;margin-top:2px;margin-left:14px">${escapeHtml(d.explanation)}</div>
+    </div>`
+  }
+  const panel = document.createElement('div')
+  panel.id = 'causal-panel'
+  panel.className = 'causal-panel'
+  panel.innerHTML = `
+    <h3>Causal Explanation</h3>
+    <div class="causal-summary">${escapeHtml(causal.summary)}</div>
+    ${items}
+    <div class="causal-metrics">
+      <span>Tokens: <strong>${causal.totalTokensBefore}</strong> → <strong>${causal.totalTokensAfter}</strong></span>
+      <span>Compression: <strong>${(causal.compressionRatio * 100).toFixed(0)}%</strong></span>
+    </div>
+  `
+  summaryPanel.parentNode.insertBefore(panel, summaryPanel.nextSibling)
+}
+
+function setMode(newMode) {
+  mode = newMode
+  document.getElementById('mode-single').className = newMode === 'single' ? 'active' : ''
+  document.getElementById('mode-compare').className = newMode === 'compare' ? 'active' : ''
+  runSelectorB.style.display = newMode === 'compare' ? '' : 'none'
+  if (newMode === 'single') {
+    if (runSelectorA.value) loadTimeline(runSelectorA.value)
+  } else {
+    if (runSelectorA.value && runSelectorB.value) loadComparison(runSelectorA.value, runSelectorB.value)
+  }
+}
+
+async function loadRuns() {
+  const res = await fetch('/api/runs')
+  runsCache = await res.json()
+  for (const sel of [runSelectorA, runSelectorB]) {
+    sel.innerHTML = '<option value="">— Select a run —</option>'
+    for (const r of runsCache) {
+      const opt = document.createElement('option')
+      opt.value = r.id
+      const date = new Date(r.createdAt).toLocaleString()
+      opt.textContent = `${r.id.slice(0, 20)}… (${r.model}, ${r.inputTokens}→${r.outputTokens} tok)`
+      sel.appendChild(opt)
+    }
+  }
+}
+
+async function loadTimeline(runId) {
+  const [runRes, timelineRes] = await Promise.all([
+    fetch(`/api/run/${runId}`),
+    fetch(`/api/timeline/${runId}`)
+  ])
+  if (!runRes.ok || !timelineRes.ok) {
+    inspector.innerHTML = '<div class="placeholder">Failed to load run</div>'
+    return
+  }
+  const run = await runRes.json()
+  const timeline = await timelineRes.json()
+  currentFramesA = timeline.frames
+  currentFramesB = []
+  selectedAIndex = 0
+  currentDiff = null
+  isReplayMode = false
+  currentReplay = null
+  replayBadge.style.display = 'none'
+  const cp = document.getElementById('causal-panel')
+  if (cp) cp.remove()
+  clearPlayback()
+  pbControls.style.display = 'flex'
+  renderSingleSummary(run)
+  divergencePanel.innerHTML = ''
+  renderSingleTimelineBar()
+  renderSingleFrame(0)
+  refreshAnnotations()
+}
+
+async function loadComparison(runAId, runBId) {
+  const [runARes, runBRes, diffRes] = await Promise.all([
+    fetch(`/api/run/${runAId}`),
+    fetch(`/api/run/${runBId}`),
+    fetch(`/api/timeline/diff?runA=${runAId}&runB=${runBId}`)
+  ])
+  if (!runARes.ok || !runBRes.ok || !diffRes.ok) {
+    inspector.innerHTML = '<div class="placeholder">Failed to load comparison</div>'
+    return
+  }
+  const runA = await runARes.json()
+  const runB = await runBRes.json()
+  const diff = await diffRes.json()
+  currentDiff = diff
+  currentFramesA = diff.matchedFrames.map(m => m.frameA)
+  currentFramesB = diff.matchedFrames.map(m => m.frameB)
+  selectedAIndex = 0
+  selectedBIndex = 0
+  isReplayMode = false
+  currentReplay = null
+  replayBadge.style.display = 'none'
+  const cp = document.getElementById('causal-panel')
+  if (cp) cp.remove()
+  clearPlayback()
+  renderCompareSummary(runA, runB)
+  renderDivergenceList(diff.divergencePoints)
+  renderCompareTimelineBar(diff)
+  renderCompareFrame(0)
+  if (annForm) annForm.style.display = 'none'
+  if (annPanel) annPanel.style.display = 'none'
+  currentAnnotations = []
+}
+
+function renderSingleSummary(run) {
+  summaryPanel.innerHTML = `
+    <div class="summary-grid">
+      <div class="summary-card"><div class="label">Model</div><div class="value">${run.request?.model || '?'}</div></div>
+      <div class="summary-card"><div class="label">Stages</div><div class="value">${(run.pipelineTrace || []).length}</div></div>
+      <div class="summary-card"><div class="label">Input Tokens</div><div class="value">${run.metrics?.inputTokens || 0}</div></div>
+      <div class="summary-card"><div class="label">Output Tokens</div><div class="value">${run.metrics?.outputTokens || 0}</div></div>
+    </div>
+  `
+}
+
+function renderCompareSummary(runA, runB) {
+  summaryPanel.innerHTML = `
+    <div class="summary-grid">
+      <div class="summary-card"><div class="label">Run A</div><div class="value" style="font-size:13px">${runA.id.slice(0, 20)}…</div></div>
+      <div class="summary-card"><div class="label">Run B</div><div class="value" style="font-size:13px">${runB.id.slice(0, 20)}…</div></div>
+      <div class="summary-card"><div class="label">Input</div><div class="value">${runA.metrics?.inputTokens || 0} → ${runB.metrics?.inputTokens || 0}</div></div>
+      <div class="summary-card"><div class="label">Output</div><div class="value">${runA.metrics?.outputTokens || 0} → ${runB.metrics?.outputTokens || 0}</div></div>
+    </div>
+  `
+}
+
+function renderDivergenceList(points) {
+  if (!points || points.length === 0) {
+    divergencePanel.innerHTML = ''
+    return
+  }
+  let html = '<div class="divergence-list"><h2 style="font-size:12px;text-transform:uppercase;color:#f0883e;margin-bottom:8px">Divergences</h2>'
+  for (const p of points) {
+    html += `<div class="div-item" onclick="selectFrame(${currentDiff.matchedFrames.findIndex(m => m.stage === p.stage)})">
+      <span class="reason">⚠ ${p.reason}</span>
+      <span class="detail">${p.detail}</span>
+    </div>`
+  }
+  html += '</div>'
+  divergencePanel.innerHTML = html
+}
+
+function renderSingleTimelineBar() {
+  timelineBar.innerHTML = ''
+  for (let i = 0; i < currentFramesA.length; i++) {
+    const f = currentFramesA[i]
+    const el = document.createElement('div')
+    el.className = `timeline-step status-${f.output?.status || 'ok'}`
+    if (i === selectedAIndex) el.classList.add('active')
+    el.textContent = f.stage
+    el.onclick = () => selectFrame(i)
+    timelineBar.appendChild(el)
+  }
+}
+
+function renderCompareTimelineBar(diff) {
+  timelineBar.innerHTML = '<div class="comparison-bar">'
+  const divSet = new Set(diff.divergencePoints.map(p => p.stage))
+  for (let i = 0; i < diff.matchedFrames.length; i++) {
+    const m = diff.matchedFrames[i]
+    const fA = m.frameA
+    const fB = m.frameB
+    const isDivergent = divSet.has(m.stage)
+    timelineBar.innerHTML += '<div class="comparison-row">'
+    for (const [f, side] of [[fA, 'A'], [fB, 'B']]) {
+      const el = document.createElement('div')
+      el.className = `timeline-step status-${f.output?.status || 'ok'}`
+      if (isDivergent) el.classList.add('divergent')
+      if (i === selectedAIndex) el.classList.add('active')
+      el.textContent = f.stage
+      el.onclick = () => selectFrame(i)
+      timelineBar.children[timelineBar.children.length - 1].appendChild(el)
+    }
+    timelineBar.innerHTML += '</div>'
+  }
+  timelineBar.innerHTML += '</div>'
+}
+
+function selectFrame(index) {
+  if (mode === 'compare') {
+    if (index < 0 || index >= (currentDiff?.matchedFrames.length || 0)) return
+    selectedAIndex = index
+    renderCompareTimelineBar(currentDiff)
+    renderCompareFrame(index)
+  } else {
+    if (index < 0 || index >= currentFramesA.length) return
+    selectedAIndex = index
+    pb.index = index
+    renderSingleTimelineBar()
+    if (isReplayMode && currentDiff) {
+      const mi = currentDiff.matchedFrames.findIndex(m => m.stage === currentFramesA[index]?.stage)
+      if (mi >= 0 && currentDiff.divergencePoints.some(p => p.stage === currentFramesA[index]?.stage)) {
+        const savedIdx = selectedAIndex
+        selectedAIndex = mi
+        renderCompareFrame(mi)
+        selectedAIndex = savedIdx
+        return
+      }
+    }
+    renderSingleFrame(index)
+  }
+  if (currentAnnotations.length > 0) {
+    renderAnnotationMarkers(selectedAIndex, currentAnnotations)
+    renderAnnotationPanel(currentAnnotations)
+  }
+}
+
+function renderSingleFrame(index) {
+  const frame = currentFramesA[index]
+  if (!frame) return
+  inspector.innerHTML = buildFrameHtml(frame, index, currentFramesA.length)
+}
+
+function buildFrameHtml(frame, index, total) {
+  let html = ''
+  html += `<div class="inspector-header"><span class="stage-badge">${frame.stage}</span><span class="frame-num">Frame ${index + 1} / ${total}</span></div>`
+  html += buildSection('Input', frame.input, true)
+  html += buildSection('Output', frame.output)
+  html += buildSection('Decision', frame.decision)
+  html += buildSection('Meta', frame.meta)
+  return html
+}
+
+function buildSection(title, data, isInput) {
+  let html = `<div class="inspector-section"><h3>${title}</h3>`
+  if (data === null || data === undefined) {
+    html += '<div class="empty">none</div>'
+  } else if (isInput && data.messages && Array.isArray(data.messages)) {
+    html += '<pre>'
+    for (const msg of data.messages) {
+      html += `[${msg.role}] ${escapeHtml(msg.content)}\n`
+    }
+    html += '</pre>'
+  } else if (data.removed && Array.isArray(data.removed) && data.removed.length > 0) {
+    html += `<pre>status: ${data.status}\nremoved (${data.removed.length}):\n`
+    for (const r of data.removed) {
+      html += `  [${r.type || '?'}] ${escapeHtml(r.reason || '?')}\n`
+    }
+    html += '</pre>'
+  } else if (data.eligible !== undefined) {
+    let d = `eligible: ${data.eligible}\nintent: ${data.intent}\nconfidence: ${data.confidence}`
+    if (data.pruneAnalysis) {
+      d += `\npruneAnalysis:\n  candidates: ${data.pruneAnalysis.candidates}\n  removable: ${data.pruneAnalysis.removable}\n  confidence: ${data.pruneAnalysis.confidence}`
+    }
+    html += `<pre>${d}</pre>`
+  } else {
+    html += `<pre>${escapeHtml(JSON.stringify(data, null, 2))}</pre>`
+  }
+  html += '</div>'
+  return html
+}
+
+function renderCompareFrame(index) {
+  const diff = currentDiff
+  if (!diff || index >= diff.matchedFrames.length) return
+  const m = diff.matchedFrames[index]
+  const fA = m.frameA
+  const fB = m.frameB
+  const divs = diff.divergencePoints.filter(p => p.stage === m.stage)
+  const total = diff.matchedFrames.length
+
+  let html = ''
+  html += `<div class="inspector-header"><span class="stage-badge">${m.stage}</span><span class="frame-num">Frame ${index + 1} / ${total}</span></div>`
+
+  for (const d of divs) {
+    html += `<div class="divergence-badge">⚠ ${d.reason}: ${d.detail}</div>`
+  }
+
+  html += '<div class="diff-side">'
+  for (const [frame, label] of [[fA, 'Run A'], [fB, 'Run B']]) {
+    html += '<div>'
+    html += `<h4>${label}</h4>`
+    html += buildSection('Input', frame.input, true)
+    html += buildSection('Output', frame.output)
+    html += buildSection('Decision', frame.decision)
+    html += buildSection('Meta', frame.meta)
+    html += '</div>'
+  }
+  html += '</div>'
+
+  if (divs.length > 0) {
+    html += '<div class="inspector-section"><h3>Diff Summary</h3>'
+    for (const d of divs) {
+      html += `<div class="diff-highlight"><strong>${d.reason}</strong>: ${d.detail}</div>`
+    }
+    html += '</div>'
+  }
+
+  inspector.innerHTML = html
+}
+
+function escapeHtml(str) {
+  if (typeof str !== 'string') str = String(str)
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
+runSelectorA.addEventListener('change', () => {
+  if (mode === 'compare') {
+    if (runSelectorA.value && runSelectorB.value) loadComparison(runSelectorA.value, runSelectorB.value)
+  } else {
+    if (runSelectorA.value) loadTimeline(runSelectorA.value)
+    else {
+      inspector.innerHTML = '<div class="placeholder">Select a run to begin</div>'
+      timelineBar.innerHTML = ''
+      summaryPanel.innerHTML = ''
+      currentFramesA = []
+    }
+  }
+})
+
+runSelectorB.addEventListener('change', () => {
+  if (mode === 'compare' && runSelectorA.value && runSelectorB.value) {
+    loadComparison(runSelectorA.value, runSelectorB.value)
+  }
+})
+
+document.addEventListener('keydown', e => {
+  if (mode === 'compare') {
+    if (!currentDiff) return
+    if (e.key === 'ArrowRight' || e.key === 'n') {
+      e.preventDefault()
+      selectFrame(Math.min(selectedAIndex + 1, currentDiff.matchedFrames.length - 1))
+    } else if (e.key === 'ArrowLeft' || e.key === 'p') {
+      e.preventDefault()
+      selectFrame(Math.max(selectedAIndex - 1, 0))
+    }
+  } else {
+    if (currentFramesA.length === 0) return
+    if (e.key === 'ArrowRight' || e.key === 'n') {
+      e.preventDefault()
+      selectFrame(Math.min(selectedAIndex + 1, currentFramesA.length - 1))
+    } else if (e.key === 'ArrowLeft' || e.key === 'p') {
+      e.preventDefault()
+      selectFrame(Math.max(selectedAIndex - 1, 0))
+    }
+  }
+})
+
+loadRuns().then(() => {
+  const path = window.location.pathname
+  const replayMatch = path.match(/\/replay\/(.+)/)
+  if (replayMatch) {
+    loadReplay(replayMatch[1])
+  } else if (runsCache.length > 0) {
+    const latest = runsCache[0]
+    runSelectorA.value = latest.id
+    loadTimeline(latest.id).then(() => {
+      setTimeout(() => startPlayback(), 500)
+    })
+  }
+})
+
+// Search
+let searchActiveChips = new Set()
+let searchResultsCache = []
+
+function toggleSearchChip(el) {
+  const filter = el.dataset.filter
+  if (searchActiveChips.has(filter)) {
+    searchActiveChips.delete(filter)
+    el.classList.remove('active')
+  } else {
+    searchActiveChips.add(filter)
+    el.classList.add('active')
+  }
+  runSearch()
+}
+
+async function runSearch() {
+  const text = document.getElementById('search-input').value.trim()
+  const stage = document.getElementById('search-stage').value.trim()
+  const author = document.getElementById('search-author').value.trim()
+  const resultsDiv = document.getElementById('search-results')
+  resultsDiv.innerHTML = '<div class="search-loading">searching…</div>'
+
+  const params = new URLSearchParams()
+  if (text) params.set('text', text)
+  if (stage) params.set('stage', stage)
+  if (author) params.set('author', author)
+
+  for (const filter of searchActiveChips) {
+    const [key, val] = filter.split(':')
+    if (val) {
+      params.set(key, val)
+    } else {
+      params.set(key, 'true')
+    }
+  }
+
+  const res = await fetch(`/api/search?${params.toString()}`)
+  if (!res.ok) {
+    resultsDiv.innerHTML = '<div class="search-empty">Search failed</div>'
+    return
+  }
+  searchResultsCache = await res.json()
+  renderSearchResults(searchResultsCache)
+}
+
+function renderSearchResults(results) {
+  const resultsDiv = document.getElementById('search-results')
+  if (results.length === 0) {
+    resultsDiv.innerHTML = '<div class="search-empty">No matching runs found</div>'
+    return
+  }
+  let html = ''
+  for (const r of results) {
+    let reasons = ''
+    for (const m of r.matches) {
+      reasons += `<div class="sr-reason">[${m.source}] ${escapeHtml(m.reason)}</div>`
+    }
+    html += `<div class="search-result-item" onclick="openSearchResult('${r.runId}')">
+      <div class="sr-runid">${escapeHtml(r.runId)}</div>
+      ${reasons}
+      <span class="sr-open">→ Open Run</span>
+    </div>`
+  }
+  resultsDiv.innerHTML = html
+}
+
+async function openSearchResult(runId) {
+  setMode('single')
+  const replay = searchResultsCache.find(r => r.runId === runId)
+  if (!replay) {
+    // find the run in the selector
+    for (const opt of runSelectorA.options) {
+      if (opt.value === runId) {
+        runSelectorA.value = runId
+        loadTimeline(runId)
+        return
+      }
+    }
+    return
+  }
+  // try to open replay if exists
+  const exportRes = await fetch(`/api/replay/export/${runId}`, { method: 'POST' })
+  if (exportRes.ok) {
+    const data = await exportRes.json()
+    window.location.href = `/ui/replay/${data.replayId}`
+  } else {
+    // fallback: load timeline directly
+    runSelectorA.value = runId
+    loadTimeline(runId)
+  }
+}
+
+// Tab switching
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'))
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'))
+  btn.classList.add('active')
+  document.getElementById('tab-' + tab).classList.add('active')
+  document.getElementById('explorer-controls').style.display = tab === 'explorer' ? 'flex' : 'none'
+  if (tab === 'regression') loadRegDropdowns()
+  if (tab === 'lab') loadBenchDropdowns()
+  if (tab === 'workspaces') loadWorkspaces()
+  if (tab === 'plugins') loadPlugins()
+  if (tab === 'multirun') loadMultiRunHistory()
+}
+
+async function loadPlugins() {
+  const div = document.getElementById('plugin-list')
+  div.innerHTML = '<div class="search-loading">loading plugins\u2026</div>'
+  try {
+    const res = await fetch('/api/plugins')
+    const plugins = await res.json()
+    if (plugins.length === 0) {
+      div.innerHTML = '<div class="plugin-empty">No plugins installed.</div>'
+      return
+    }
+    let html = '<div class="plugins-list">'
+    for (const p of plugins) {
+      const statusClass = p.runtimeStatus
+      const exts = p.extensionTypes || []
+      html += '<div class="plugin-card">' +
+        '<div class="plugin-header">' +
+        '<span><span class="plugin-id">' + escapeHtml(p.manifest.id) + '</span><span class="plugin-version">v' + escapeHtml(p.manifest.version) + '</span></span>' +
+        '<span class="plugin-status ' + statusClass + '">' + statusClass + '</span>' +
+        '</div>' +
+        '<div class="plugin-extensions">' + exts.map(t => '<span class="plugin-ext-tag">' + t + '</span>').join('') + '</div>' +
+        '<div class="plugin-actions">'
+      if (statusClass === 'enabled') {
+        html += '<button class="toggle-off" onclick="togglePlugin(\'' + p.manifest.id + '\', false)">Disable</button>'
+      } else if (statusClass === 'disabled' || statusClass === 'unloaded') {
+        html += '<button class="toggle-on" onclick="togglePlugin(\'' + p.manifest.id + '\', true)">Enable</button>'
+      }
+      html += '</div></div>'
+    }
+    html += '</div>'
+    div.innerHTML = html
+  } catch (err) {
+    div.innerHTML = '<div class="plugin-empty">Failed to load plugins: ' + escapeHtml(err.message) + '</div>'
+  }
+}
+
+async function togglePlugin(id, enable) {
+  const action = enable ? 'enable' : 'disable'
+  const res = await fetch('/api/plugins/' + action + '/' + id, { method: 'POST' })
+  if (res.ok) {
+    loadPlugins()
+  }
+}
+
+function loadRegDropdowns() {
+  const baseline = document.getElementById('reg-baseline')
+  const candidate = document.getElementById('reg-candidate')
+  baseline.innerHTML = '<option value="">— Select baseline run —</option>'
+  candidate.innerHTML = '<option value="">— Select candidate run —</option>'
+  for (const r of runsCache) {
+    const o1 = document.createElement('option'); o1.value = r.id; o1.textContent = r.id.slice(0, 24) + '…'; baseline.appendChild(o1)
+    const o2 = document.createElement('option'); o2.value = r.id; o2.textContent = r.id.slice(0, 24) + '…'; candidate.appendChild(o2)
+  }
+}
+
+async function runRegression() {
+  const baseline = document.getElementById('reg-baseline').value
+  const candidate = document.getElementById('reg-candidate').value
+  if (!baseline || !candidate) return
+  const res = await fetch('/api/regression', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ baselineRunIds: [baseline], candidateRunIds: [candidate] }),
+  })
+  const report = await res.json()
+  const div = document.getElementById('reg-results')
+  if (report.error) { div.innerHTML = '<div class="card">Error: ' + escapeHtml(report.error) + '</div>'; return }
+  let signalsHtml = ''
+  for (const s of report.signals) {
+    signalsHtml += '<div class="signal-item"><span class="sig-cat">' + s.category + '</span><span class="sig-evidence">' + escapeHtml(s.evidence) + '</span><span class="sig-severity ' + s.severity + '">' + s.severity + '</span></div>'
+  }
+  div.innerHTML = '<div class="card-grid">' +
+    '<div class="card"><div class="label">Severity</div><div class="value severity-' + report.severity + '">' + report.severity + '</div></div>' +
+    '<div class="card"><div class="label">Score</div><div class="value">' + report.score + '</div></div>' +
+    '<div class="card"><div class="label">Signals</div><div class="value">' + report.signals.length + '</div></div>' +
+    '<div class="card"><div class="label">Impacted Stages</div><div class="value" style="font-size:14px">' + (report.impactedStages.join(', ') || 'none') + '</div></div>' +
+    '</div><h3>Signals</h3>' + (signalsHtml || '<div style="color:#8b949e;font-style:italic">No signals detected</div>')
+}
+
+function loadBenchDropdowns() {
+  const orig = document.getElementById('bench-original')
+  const opt = document.getElementById('bench-optimized')
+  orig.innerHTML = '<option value="">— Original run —</option>'
+  opt.innerHTML = '<option value="">— Optimized run —</option>'
+  for (const r of runsCache) {
+    const o1 = document.createElement('option'); o1.value = r.id; o1.textContent = r.id.slice(0, 24) + '…'; orig.appendChild(o1)
+    const o2 = document.createElement('option'); o2.value = r.id; o2.textContent = r.id.slice(0, 24) + '…'; opt.appendChild(o2)
+  }
+}
+
+async function runBenchmark() {
+  const original = document.getElementById('bench-original').value
+  const optimized = document.getElementById('bench-optimized').value
+  if (!original || !optimized) return
+  const res = await fetch('/api/benchmark', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ originalRunId: original, optimizedRunId: optimized }),
+  })
+  const report = await res.json()
+  if (report.error) { document.getElementById('bench-results').innerHTML = '<div class="card">Error: ' + escapeHtml(report.error) + '</div>'; return }
+  renderBenchmark(report)
+}
+
+async function runBenchmarkVsAvg() {
+  const runId = document.getElementById('bench-original').value
+  if (!runId) return
+  const res = await fetch('/api/benchmark', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ runId }),
+  })
+  const report = await res.json()
+  if (report.error) { document.getElementById('bench-results').innerHTML = '<div class="card">Error: ' + escapeHtml(report.error) + '</div>'; return }
+  renderBenchmark(report)
+}
+
+function renderBenchmark(report) {
+  const scoreClass = report.score >= 60 ? 'good' : report.score >= 30 ? 'review' : 'bad'
+  const m = report.metrics
+  document.getElementById('bench-results').innerHTML = '' +
+    '<div class="card-grid">' +
+    '<div class="card"><div class="label">Score</div><div class="benchmark-score ' + scoreClass + '">' + report.score + '</div></div>' +
+    '<div class="card"><div class="label">Recommendation</div><div><span class="rec-badge ' + report.recommendation + '">' + report.recommendation + '</span></div></div>' +
+    '<div class="card"><div class="label">Reduction</div><div class="value">' + m.efficiency.reductionPct + '%</div><div class="sub">' + m.efficiency.inputTokensBefore + ' → ' + m.efficiency.inputTokensAfter + ' tokens</div></div>' +
+    '<div class="card"><div class="label">Preserved</div><div class="value">' + (m.integrity.preservedRatio * 100).toFixed(0) + '%</div></div>' +
+    '</div><h3>Metrics</h3>' +
+    '<table class="metric-table"><tr><th>Category</th><th>Metric</th><th>Value</th></tr>' +
+    '<tr><td>Efficiency</td><td>Reduction</td><td class="' + (m.efficiency.reductionPct > 20 ? 'good' : 'warn') + '">' + m.efficiency.reductionPct + '%</td></tr>' +
+    '<tr><td>Integrity</td><td>Preserved Ratio</td><td class="' + (m.integrity.preservedRatio > 0.7 ? 'good' : 'warn') + '">' + (m.integrity.preservedRatio * 100).toFixed(0) + '%</td></tr>' +
+    '<tr><td>Stability</td><td>Divergences</td><td class="' + (m.stability.divergenceCount <= 1 ? 'good' : 'warn') + '">' + m.stability.divergenceCount + '</td></tr>' +
+    '<tr><td>Performance</td><td>Overhead</td><td>' + m.performance.processingOverheadMs + 'ms</td></tr>' +
+    '</table>'
+}
+
+async function createWorkspace() {
+  const input = document.getElementById('ws-name-input')
+  const name = input.value.trim()
+  if (!name) return
+  const res = await fetch('/api/workspaces', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  })
+  if (res.ok) {
+    input.value = ''
+    loadWorkspaces()
+  }
+}
+
+async function loadWorkspaces() {
+  const res = await fetch('/api/workspaces')
+  const workspaces = await res.json()
+  const div = document.getElementById('ws-list')
+  if (workspaces.length === 0) {
+    div.innerHTML = '<div style="color:#8b949e;font-style:italic;font-size:13px">No workspaces yet. Create one above.</div>'
+    return
+  }
+  let html = ''
+  for (const ws of workspaces) {
+    html += '<div class="ws-item"><div class="ws-name">' + escapeHtml(ws.name) + '</div><div class="ws-meta">' + ws.runIds.length + ' runs · ' + ws.replayIds.length + ' replays · ' + ws.benchmarkIds.length + ' benchmarks · ' + ws.regressionIds.length + ' regressions · created ' + new Date(ws.createdAt).toLocaleDateString() + '</div></div>'
+  }
+  div.innerHTML = html
+}
+
+// Multi-Run
+async function runMultiRun() {
+  const model = document.getElementById('mrun-model').value.trim()
+  const message = document.getElementById('mrun-message').value.trim()
+  const resultsDiv = document.getElementById('mrun-results')
+  const compDiv = document.getElementById('mrun-comparison')
+  if (!message) return
+
+  resultsDiv.innerHTML = '<div class="search-loading">Running across all providers...</div>'
+  compDiv.innerHTML = ''
+
+  try {
+    const providersRes = await fetch('/api/providers')
+    const providersData = await providersRes.json()
+    const providerIds = providersData.providers.map(p => p.id).filter(id => id !== 'mock')
+
+    if (providerIds.length < 2) {
+      resultsDiv.innerHTML = '<div class="placeholder">Need at least 2 providers configured. Run with mock excluded.</div>'
+      return
+    }
+
+    const res = await fetch('/api/multirun', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'user', content: message }],
+        providers: providerIds,
+      }),
+    })
+    const result = await res.json()
+    if (result.error) {
+      resultsDiv.innerHTML = '<div class="card">Error: ' + escapeHtml(result.error) + '</div>'
+      return
+    }
+    renderMultiRunResults(result)
+    loadMultiRunHistory()
+  } catch (err) {
+    resultsDiv.innerHTML = '<div class="card">Error: ' + escapeHtml(err.message) + '</div>'
+  }
+}
+
+function renderMultiRunResults(result) {
+  const resultsDiv = document.getElementById('mrun-results')
+  const compDiv = document.getElementById('mrun-comparison')
+  const c = result.comparison
+
+  let runsHtml = '<div class="card-grid">'
+  for (const run of result.runs) {
+    runsHtml += '<div class="card"><div class="label">' + escapeHtml(run.provider) + '</div><div class="value" style="font-size:12px">' + escapeHtml(run.id) + '</div></div>'
+  }
+  runsHtml += '</div>'
+  resultsDiv.innerHTML = '<h3>Runs</h3>' + runsHtml
+
+  let html = '<div class="card-grid">'
+  html += '<div class="card"><div class="label">Divergence Score</div><div class="value" style="color:' + (c.divergenceScore > 0.3 ? '#f0883e' : '#3fb950') + '">' + (c.divergenceScore * 100).toFixed(0) + '%</div></div>'
+  html += '<div class="card"><div class="label">Token Variance</div><div class="value">' + (c.tokenVariance * 100).toFixed(0) + '%</div></div>'
+  html += '<div class="card"><div class="label">Latency Variance</div><div class="value">' + c.latencyVariance + 'ms</div></div>'
+  html += '</div>'
+
+  if (c.structuralDiff) {
+    html += '<h3>Output Range</h3>'
+    const o = c.structuralDiff.outputDiff
+    html += '<table class="metric-table"><tr><th>Metric</th><th>Min</th><th>Max</th><th>Avg</th></tr>'
+    html += '<tr><td>Tokens</td><td>' + o.tokenRange.min + '</td><td>' + o.tokenRange.max + '</td><td>' + o.tokenRange.avg.toFixed(0) + '</td></tr>'
+    html += '<tr><td>Latency</td><td>' + o.latencyRange.min + 'ms</td><td>' + o.latencyRange.max + 'ms</td><td>' + o.latencyRange.avg.toFixed(0) + 'ms</td></tr>'
+    html += '<tr><td>Content Length</td><td>' + o.contentLengthRange.min + '</td><td>' + o.contentLengthRange.max + '</td><td>' + o.contentLengthRange.avg.toFixed(0) + '</td></tr>'
+    html += '</table>'
+
+    if (c.structuralDiff.pruneDiff.length > 0) {
+      html += '<h3>Prune Decisions</h3>'
+      html += '<table class="metric-table"><tr><th>Provider</th><th>Removed</th><th>Shadow Mode</th></tr>'
+      for (const p of c.structuralDiff.pruneDiff) {
+        html += '<tr><td>' + escapeHtml(p.provider) + '</td><td>' + p.removedCount + '</td><td>' + p.shadowMode + '</td></tr>'
+      }
+      html += '</table>'
+    }
+  }
+
+  if (c.providerRanking && c.providerRanking.length > 0) {
+    html += '<h3>Provider Ranking</h3>'
+    html += '<table class="metric-table"><tr><th>Rank</th><th>Provider</th><th>Score</th></tr>'
+    for (let i = 0; i < c.providerRanking.length; i++) {
+      const r = c.providerRanking[i]
+      html += '<tr><td>' + (i + 1) + '</td><td>' + escapeHtml(r.provider) + '</td><td class="' + (r.score >= 60 ? 'good' : r.score >= 30 ? 'warn' : 'bad') + '">' + r.score + '</td></tr>'
+    }
+    html += '</table>'
+  }
+
+  compDiv.innerHTML = html + '<div style="margin-top:12px"><a href="/ui/multirun/' + result.groupId + '" style="color:#58a6ff">Open Multi-Run Viewer →</a></div>'
+}
+
+async function loadMultiRunHistory() {
+  const div = document.getElementById('mrun-history')
+  if (!div) return
+
+  const res = await fetch('/api/runs')
+  const runs = await res.json()
+  const groups = new Map()
+  for (const r of runs) {
+    if (r.multiRun && r.multiRun.groupId) {
+      if (!groups.has(r.multiRun.groupId)) groups.set(r.multiRun.groupId, [])
+      groups.get(r.multiRun.groupId).push(r)
+    }
+  }
+  if (groups.size === 0) {
+    div.innerHTML = '<div class="search-empty">No multi-runs yet.</div>'
+    return
+  }
+  let html = ''
+  for (const [groupId, groupRuns] of groups) {
+    const providers = groupRuns.map(r => r.multiRun.provider).join(', ')
+    html += '<div class="ws-item" onclick="window.location.href=\'/ui/multirun/' + groupId + '\'">'
+    html += '<div class="ws-name">' + escapeHtml(groupId) + '</div>'
+    html += '<div class="ws-meta">' + groupRuns.length + ' runs · ' + providers + '</div>'
+    html += '</div>'
+  }
+  div.innerHTML = html
+}
+
+// Testing tab
+async function runTestSuite(suite) {
+  const resultsDiv = document.getElementById('test-results')
+  const coverageDiv = document.getElementById('test-coverage')
+  resultsDiv.textContent = 'Running ' + suite + ' tests...\n'
+  coverageDiv.textContent = ''
+  try {
+    const res = await fetch('/api/test/run?suite=' + suite)
+    const data = await res.json()
+    resultsDiv.textContent = data.output || data.error || 'No output'
+    if (data.coverage) {
+      coverageDiv.textContent = data.coverage
+    }
+  } catch (err) {
+    resultsDiv.textContent = 'Error: ' + err.message
+  }
+}
+</script>
+</body>
+</html>
